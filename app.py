@@ -368,7 +368,7 @@ st.markdown(
 
         /* 안내문과 첫 번째 카드 줄 사이의 실제 여백 */
         .card-top-spacer {
-            height: 22px;
+            height: 50px;
         }
 
         /* Streamlit 버튼 자체 */
