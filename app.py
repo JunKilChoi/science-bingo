@@ -188,25 +188,25 @@ if "selected_word" not in st.session_state:
 if "current_question" not in st.session_state:
     st.session_state.current_question = None
 
-if "show_answer" not in st.session_state:
-    st.session_state.show_answer = False
+if "answer_visible" not in st.session_state:
+    st.session_state.answer_visible = False
 
 
 def select_word(word):
     """단어를 선택하고 관련 문제를 무작위로 하나 뽑습니다."""
     st.session_state.selected_word = word
     st.session_state.current_question = random.choice(QUESTIONS[word])
-    st.session_state.show_answer = False
+    st.session_state.answer_visible = False
 
 
 def show_answer():
-    st.session_state.show_answer = True
+    st.session_state.answer_visible = True
 
 
 def go_home():
     st.session_state.selected_word = None
     st.session_state.current_question = None
-    st.session_state.show_answer = False
+    st.session_state.answer_visible = False
 
 
 # ---------------------------------------------------------
@@ -217,41 +217,58 @@ st.markdown(
     <style>
         .block-container {
             max-width: 1500px;
-            padding-top: 1.5rem;
+            padding-top: 1.2rem;
             padding-bottom: 2rem;
         }
 
-        h1 {
-            text-align: center;
-            font-size: 3rem !important;
-            margin-bottom: 0.2rem !important;
+        /* 제목 */
+        h1, .stApp h1 {
+            text-align: center !important;
+            font-size: 4rem !important;
+            font-weight: 900 !important;
+            line-height: 1.1 !important;
+            letter-spacing: -0.04em !important;
+            margin-bottom: 0.5rem !important;
         }
 
+        /* 첫 화면 안내문 */
         .subtitle {
             text-align: center;
-            font-size: 1.2rem;
-            color: #666;
-            margin-bottom: 1.6rem;
+            font-size: 1.8rem !important;
+            font-weight: 800 !important;
+            color: #444;
+            margin-bottom: 2rem;
+            word-break: keep-all;
         }
 
+        /* Streamlit 버튼 자체 */
+        div[data-testid="stButton"] > button,
         div.stButton > button {
-            width: 100%;
-            min-height: 68px;
-            font-size: 1.25rem;
-            font-weight: 700;
-            border-radius: 14px;
+            width: 100% !important;
+            min-height: 88px !important;
+            border-radius: 16px !important;
+            padding: 0.65rem 0.8rem !important;
+        }
+
+        /* 버튼 안의 텍스트: Streamlit 버전 차이를 모두 커버 */
+        div[data-testid="stButton"] > button *,
+        div.stButton > button * {
+            font-size: 1.8rem !important;
+            font-weight: 900 !important;
+            line-height: 1.15 !important;
+            word-break: keep-all !important;
         }
 
         .category {
             text-align: center;
-            font-size: 1.35rem;
-            font-weight: 800;
+            font-size: 1.9rem !important;
+            font-weight: 900 !important;
             margin-top: 0.2rem;
             margin-bottom: 1rem;
         }
 
         .question-card {
-            padding: 2.2rem 2.5rem;
+            padding: 2.4rem 2.6rem;
             border: 2px solid #e5e7eb;
             border-radius: 22px;
             background: white;
@@ -261,21 +278,21 @@ st.markdown(
 
         .question-label {
             text-align: center;
-            font-size: 1.3rem;
-            font-weight: 800;
+            font-size: 1.55rem !important;
+            font-weight: 900 !important;
             margin-bottom: 1rem;
         }
 
         .question-text {
             text-align: center;
-            font-size: 2.25rem;
-            line-height: 1.55;
-            font-weight: 800;
+            font-size: 3rem !important;
+            line-height: 1.45 !important;
+            font-weight: 900 !important;
             word-break: keep-all;
         }
 
         .answer-card {
-            padding: 1.4rem 1.8rem;
+            padding: 1.6rem 1.8rem;
             border-radius: 18px;
             background: #f3f4f6;
             margin: 1rem 0 1.4rem 0;
@@ -283,15 +300,15 @@ st.markdown(
 
         .answer-label {
             text-align: center;
-            font-size: 1.1rem;
-            font-weight: 800;
+            font-size: 1.4rem !important;
+            font-weight: 900 !important;
             margin-bottom: 0.5rem;
         }
 
         .answer-text {
             text-align: center;
-            font-size: 2rem;
-            font-weight: 900;
+            font-size: 2.7rem !important;
+            font-weight: 900 !important;
             word-break: keep-all;
         }
     </style>
@@ -347,12 +364,12 @@ else:
         unsafe_allow_html=True,
     )
 
-    if not st.session_state.show_answer:
+    if not st.session_state.answer_visible:
         left, center, right = st.columns([1, 2, 1])
         with center:
             st.button(
                 "👀 정답 보기",
-                key="show_answer",
+                key="show_answer_button",
                 on_click=show_answer,
                 type="primary",
                 use_container_width=True,
