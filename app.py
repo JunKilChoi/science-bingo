@@ -362,7 +362,7 @@ st.markdown(
             font-size: 1.15rem !important;
             font-weight: 800 !important;
             color: #444;
-            margin-bottom: 0.7rem;
+            margin-bottom: 1.35rem;
             word-break: keep-all;
         }
 
