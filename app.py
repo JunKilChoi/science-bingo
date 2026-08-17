@@ -1,6 +1,6 @@
 import copy
-import json
 import random
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -195,8 +195,7 @@ if "current_question" not in st.session_state:
 if "answer_visible" not in st.session_state:
     st.session_state.answer_visible = False
 
-# 실제 게임에서 사용하는 문제 은행
-# 사이드바에서 수정하면 이 데이터가 즉시 바뀝니다.
+# 실제 게임에서 사용하는 문제은행
 if "question_bank" not in st.session_state:
     st.session_state.question_bank = copy.deepcopy(QUESTIONS)
 
@@ -218,194 +217,120 @@ def go_home():
     st.session_state.answer_visible = False
 
 
+def load_question_bank_from_excel(uploaded_file):
+    """업로드한 엑셀의 '문제은행' 시트를 읽어 문제은행 딕셔너리로 변환합니다."""
+    try:
+        # 제공 양식은 5행이 열 제목이므로 header=4
+        df = pd.read_excel(
+            uploaded_file,
+            sheet_name="문제은행",
+            header=4,
+            engine="openpyxl",
+        )
+    except ValueError as e:
+        raise ValueError("'문제은행' 시트를 찾을 수 없습니다.") from e
+    except Exception as e:
+        raise ValueError(f"엑셀 파일을 읽을 수 없습니다: {e}") from e
+
+    required = ["단어", "문제", "정답"]
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise ValueError(
+            "문제은행 시트의 5행에 '단어 / 문제 / 정답' 열 제목이 있어야 합니다."
+        )
+
+    df = df[required].copy()
+    df = df.dropna(how="all")
+
+    new_bank = {}
+    for _, row in df.iterrows():
+        word = "" if pd.isna(row["단어"]) else str(row["단어"]).strip()
+        question = "" if pd.isna(row["문제"]) else str(row["문제"]).strip()
+        answer = "" if pd.isna(row["정답"]) else str(row["정답"]).strip()
+
+        # 완전히 빈 행은 무시
+        if not word and not question and not answer:
+            continue
+
+        if not word or not question or not answer:
+            raise ValueError(
+                "단어, 문제, 정답 중 일부만 입력된 행이 있습니다. "
+                "각 행의 세 칸을 모두 입력하거나 행 전체를 비워주세요."
+            )
+
+        new_bank.setdefault(word, []).append({"q": question, "a": answer})
+
+    if not new_bank:
+        raise ValueError("사용할 수 있는 문제가 없습니다.")
+
+    return new_bank
+
+
 # ---------------------------------------------------------
-# 사이드바: 카드 / 문제 / 정답 편집
+# 사이드바: 엑셀 문제은행 관리
 # ---------------------------------------------------------
 with st.sidebar:
-    st.header("⚙️ 카드·문제 편집")
-    st.caption("게임 중에도 수정할 수 있습니다. 저장하면 즉시 반영됩니다.")
+    st.header("📚 문제은행 관리")
+    st.caption("엑셀에서 문제를 수정한 뒤 한 번에 업로드할 수 있습니다.")
 
-    bank = st.session_state.question_bank
-    edit_words = list(bank.keys())
+    template_path = Path(__file__).with_name("science_bingo_question_template.xlsx")
 
-    if edit_words:
-        selected_edit_word = st.selectbox(
-            "수정할 단어 카드",
-            edit_words,
-            key="editor_selected_word",
-        )
-
-        current_rows = pd.DataFrame(bank[selected_edit_word])
-        if current_rows.empty:
-            current_rows = pd.DataFrame([{"q": "", "a": ""}])
-
-        current_rows = current_rows.rename(columns={"q": "문제", "a": "정답"})
-
-        with st.form(key=f"edit_form_{selected_edit_word}"):
-            new_word_name = st.text_input(
-                "카드 이름",
-                value=selected_edit_word,
-            )
-
-            st.markdown("**문제와 정답**")
-            edited_rows = st.data_editor(
-                current_rows,
-                hide_index=True,
-                num_rows="dynamic",
-                use_container_width=True,
-                column_config={
-                    "문제": st.column_config.TextColumn(
-                        "문제",
-                        width="large",
-                        help="학생에게 보여줄 문제",
-                    ),
-                    "정답": st.column_config.TextColumn(
-                        "정답",
-                        width="medium",
-                        help="정답 보기에서 표시할 내용",
-                    ),
-                },
-                key=f"question_editor_{selected_edit_word}",
-            )
-
-            save_changes = st.form_submit_button(
-                "💾 이 카드 저장",
-                use_container_width=True,
-            )
-
-        if save_changes:
-            new_word_name = new_word_name.strip()
-
-            cleaned_questions = []
-            for _, row in edited_rows.iterrows():
-                q = str(row.get("문제", "")).strip()
-                a = str(row.get("정답", "")).strip()
-
-                # 완전히 빈 행은 무시
-                if not q and not a:
-                    continue
-
-                if q and a:
-                    cleaned_questions.append({"q": q, "a": a})
-
-            if not new_word_name:
-                st.error("카드 이름을 입력해주세요.")
-            elif new_word_name != selected_edit_word and new_word_name in bank:
-                st.error("같은 이름의 카드가 이미 있습니다.")
-            elif not cleaned_questions:
-                st.error("문제와 정답을 최소 1개는 남겨주세요.")
-            else:
-                # 기존 카드의 위치를 유지한 채 이름과 내용을 교체
-                new_bank = {}
-                for word, questions in bank.items():
-                    if word == selected_edit_word:
-                        new_bank[new_word_name] = cleaned_questions
-                    else:
-                        new_bank[word] = questions
-
-                st.session_state.question_bank = new_bank
-
-                # 현재 문제 화면에서 이 카드를 열어 둔 경우 이름도 맞춰줌
-                if st.session_state.selected_word == selected_edit_word:
-                    st.session_state.selected_word = new_word_name
-
-                st.success("저장했습니다. 게임 화면에 바로 반영됩니다.")
-
-        st.divider()
-        st.subheader("➕ 새 카드 추가")
-
-        with st.form("add_card_form", clear_on_submit=True):
-            add_word_name = st.text_input("새 카드 이름")
-            add_question = st.text_input("첫 문제")
-            add_answer = st.text_input("첫 정답")
-            add_card = st.form_submit_button(
-                "카드 추가",
-                use_container_width=True,
-            )
-
-        if add_card:
-            add_word_name = add_word_name.strip()
-            add_question = add_question.strip()
-            add_answer = add_answer.strip()
-
-            if not add_word_name or not add_question or not add_answer:
-                st.error("카드 이름, 문제, 정답을 모두 입력해주세요.")
-            elif add_word_name in st.session_state.question_bank:
-                st.error("같은 이름의 카드가 이미 있습니다.")
-            else:
-                st.session_state.question_bank[add_word_name] = [
-                    {"q": add_question, "a": add_answer}
-                ]
-                st.success(f"'{add_word_name}' 카드를 추가했습니다.")
-                st.rerun()
-
-        st.divider()
-        st.subheader("💾 편집 내용 백업")
-
-        question_json = json.dumps(
-            st.session_state.question_bank,
-            ensure_ascii=False,
-            indent=2,
-        )
-
+    if template_path.exists():
         st.download_button(
-            "JSON으로 저장",
-            data=question_json,
-            file_name="science_bingo_questions.json",
-            mime="application/json",
+            "⬇️ 엑셀 양식 다운로드",
+            data=template_path.read_bytes(),
+            file_name="science_bingo_question_template.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
-
-        uploaded_json = st.file_uploader(
-            "저장한 JSON 불러오기",
-            type=["json"],
+    else:
+        st.warning(
+            "엑셀 양식 파일을 찾을 수 없습니다. "
+            "GitHub 저장소에 science_bingo_question_template.xlsx 파일도 함께 올려주세요."
         )
 
-        if uploaded_json is not None:
-            if st.button("JSON 적용", use_container_width=True):
-                try:
-                    loaded = json.load(uploaded_json)
+    st.divider()
 
-                    valid = (
-                        isinstance(loaded, dict)
-                        and all(
-                            isinstance(word, str)
-                            and isinstance(items, list)
-                            and len(items) > 0
-                            and all(
-                                isinstance(item, dict)
-                                and isinstance(item.get("q"), str)
-                                and isinstance(item.get("a"), str)
-                                for item in items
-                            )
-                            for word, items in loaded.items()
-                        )
-                    )
+    uploaded_excel = st.file_uploader(
+        "문제은행 엑셀 업로드",
+        type=["xlsx"],
+        help="제공된 양식의 '문제은행' 시트를 수정한 파일을 올려주세요.",
+    )
 
-                    if not valid:
-                        raise ValueError("올바른 문제 데이터 형식이 아닙니다.")
+    if uploaded_excel is not None:
+        if st.button("✅ 업로드한 문제은행 적용", use_container_width=True):
+            try:
+                new_bank = load_question_bank_from_excel(uploaded_excel)
+                st.session_state.question_bank = new_bank
+                go_home()
+                st.success(
+                    f"적용 완료: {len(new_bank)}개 단어 / "
+                    f"{sum(len(v) for v in new_bank.values())}개 문제"
+                )
+                st.rerun()
+            except ValueError as e:
+                st.error(str(e))
 
-                    st.session_state.question_bank = loaded
-                    go_home()
-                    st.success("문제 데이터를 불러왔습니다.")
-                    st.rerun()
+    st.divider()
 
-                except Exception as e:
-                    st.error(f"불러오기에 실패했습니다: {e}")
+    total_cards = len(st.session_state.question_bank)
+    total_questions = sum(
+        len(items) for items in st.session_state.question_bank.values()
+    )
+    st.info(f"현재 문제은행: **{total_cards}개 단어 · {total_questions}개 문제**")
 
-        if st.button("↩️ 처음 문제로 되돌리기", use_container_width=True):
-            st.session_state.question_bank = copy.deepcopy(QUESTIONS)
-            go_home()
-            st.success("처음 문제로 되돌렸습니다.")
-            st.rerun()
+    if st.button("↩️ 기본 문제은행으로 초기화", use_container_width=True):
+        st.session_state.question_bank = copy.deepcopy(QUESTIONS)
+        go_home()
+        st.rerun()
 
-        st.caption(
-            "※ Streamlit Cloud에서 앱을 다시 시작하거나 재배포하면 "
-            "앱 안에서 수정한 내용이 사라질 수 있습니다. "
-            "계속 사용할 수정본은 JSON으로 저장해 두는 것이 안전합니다."
-        )
+    st.caption(
+        "※ 업로드한 내용은 현재 앱 세션에 적용됩니다. "
+        "앱이 완전히 재시작되거나 재배포되면 기본 문제은행으로 돌아갑니다."
+    )
 
-# 현재 문제 은행의 카드 목록
+
+# 현재 문제은행의 단어 카드 목록
 WORDS = list(st.session_state.question_bank.keys())
 
 
@@ -512,20 +437,18 @@ st.markdown(
             word-break: keep-all;
         }
 
-        /* 사이드바 편집 버튼은 작게 유지 */
+        /* 사이드바 버튼은 관리용이므로 작게 표시 */
         [data-testid="stSidebar"] div[data-testid="stButton"] > button,
-        [data-testid="stSidebar"] div.stButton > button,
         [data-testid="stSidebar"] div[data-testid="stDownloadButton"] > button {
-            min-height: 42px !important;
-            padding: 0.35rem 0.55rem !important;
+            min-height: 44px !important;
+            padding: 0.4rem 0.6rem !important;
             border-radius: 10px !important;
         }
 
         [data-testid="stSidebar"] div[data-testid="stButton"] > button *,
-        [data-testid="stSidebar"] div.stButton > button *,
         [data-testid="stSidebar"] div[data-testid="stDownloadButton"] > button * {
-            font-size: 0.95rem !important;
-            font-weight: 700 !important;
+            font-size: 1rem !important;
+            font-weight: 800 !important;
             line-height: 1.2 !important;
         }
     </style>
