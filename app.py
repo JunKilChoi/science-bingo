@@ -342,27 +342,27 @@ st.markdown(
     <style>
         .block-container {
             max-width: 1500px;
-            padding-top: 1.2rem;
-            padding-bottom: 2rem;
+            padding-top: 0.45rem;
+            padding-bottom: 0.5rem;
         }
 
         /* 제목 */
         h1, .stApp h1 {
             text-align: center !important;
-            font-size: 4rem !important;
+            font-size: 2.8rem !important;
             font-weight: 900 !important;
-            line-height: 1.1 !important;
+            line-height: 1.0 !important;
             letter-spacing: -0.04em !important;
-            margin-bottom: 0.5rem !important;
+            margin-bottom: 0.15rem !important;
         }
 
         /* 첫 화면 안내문 */
         .subtitle {
             text-align: center;
-            font-size: 1.8rem !important;
+            font-size: 1.15rem !important;
             font-weight: 800 !important;
             color: #444;
-            margin-bottom: 2rem;
+            margin-bottom: 0.7rem;
             word-break: keep-all;
         }
 
@@ -370,18 +370,25 @@ st.markdown(
         div[data-testid="stButton"] > button,
         div.stButton > button {
             width: 100% !important;
-            min-height: 88px !important;
-            border-radius: 16px !important;
-            padding: 0.65rem 0.8rem !important;
+            min-height: 52px !important;
+            height: 52px !important;
+            border-radius: 12px !important;
+            padding: 0.2rem 0.55rem !important;
         }
 
         /* 버튼 안의 텍스트: Streamlit 버전 차이를 모두 커버 */
         div[data-testid="stButton"] > button *,
         div.stButton > button * {
-            font-size: 1.8rem !important;
+            font-size: 1.35rem !important;
             font-weight: 900 !important;
             line-height: 1.15 !important;
             word-break: keep-all !important;
+        }
+
+        /* 5열 카드 행 사이의 세로 간격을 최소화 */
+        [data-testid="stMain"] [data-testid="stHorizontalBlock"] {
+            gap: 0.55rem !important;
+            margin-bottom: -0.35rem !important;
         }
 
         .category {
