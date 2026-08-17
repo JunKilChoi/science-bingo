@@ -366,6 +366,11 @@ st.markdown(
             word-break: keep-all;
         }
 
+        /* 안내문과 첫 번째 카드 줄 사이의 실제 여백 */
+        .card-top-spacer {
+            height: 22px;
+        }
+
         /* Streamlit 버튼 자체 */
         div[data-testid="stButton"] > button,
         div.stButton > button {
@@ -472,6 +477,9 @@ if st.session_state.selected_word is None:
         '<div class="subtitle">학생이 고른 단어를 클릭하면 관련 문제가 무작위로 출제됩니다.</div>',
         unsafe_allow_html=True,
     )
+
+    # 첫 번째 카드 줄이 안내문에 붙지 않도록 실제 공간 확보
+    st.markdown('<div class="card-top-spacer"></div>', unsafe_allow_html=True)
 
     # 5열 × 8행
     for row_start in range(0, len(WORDS), 5):
